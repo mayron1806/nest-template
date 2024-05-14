@@ -1,17 +1,30 @@
 import { MailerService } from '@nestjs-modules/mailer';
 import { Injectable } from '@nestjs/common';
+import { EmailTemplates } from 'src/templates/email';
 
 @Injectable()
 export class EmailService {
-  // constructor(private mailerService: MailerService) {}
+  constructor(private mailerService: MailerService) {}
 
-  async enviarEmail(destination: string, subject: string, mensagem: string) {
-    // await this.mailerService.sendMail({
-    //   to: destination,
-    //   from: 'mayronfernandes01@gmail.com',
-    //   subject,
-    //   html: `<h3 style="color: red">${mensagem}</h3>`,
-    // });
-    console.log('Enviar email');
+  async sendMail(destination: string, subject: string, mensagem: string) {
+    await this.mailerService.sendMail({
+      to: destination,
+      subject,
+      text: mensagem,
+    });
+  }
+  async sendEmailFromTemplate(
+    destination: string,
+    subject: string,
+    template: keyof typeof EmailTemplates,
+    data?: any,
+  ) {
+    await this.mailerService.sendMail({
+      to: destination,
+      subject,
+      template: `./${template}`,
+      context: data,
+      html: EmailTemplates[template](data)
+    });
   }
 }

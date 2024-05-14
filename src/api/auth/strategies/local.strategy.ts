@@ -3,9 +3,10 @@ import { PassportStrategy } from '@nestjs/passport';
 import { Strategy } from 'passport-local';
 import { Queue } from 'bull';
 import { InjectQueue } from '@nestjs/bull';
-import { UserRepository } from 'src/Repositories/user/user.repository';
 import { EmailUtils } from 'src/Utils/Email.utils';
 import { Security } from 'src/Utils/Security.utils';
+import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
+import { TransactionHost } from '@nestjs-cls/transactional';
 
 export type JwtPayload = {
   data: string;
@@ -14,7 +15,7 @@ export type JwtPayload = {
 @Injectable()
 export class LocalStrategy extends PassportStrategy(Strategy) {
   constructor(
-    private authRepository: UserRepository,
+    private readonly txHost: TransactionHost<TransactionalAdapterPrisma>,
     @InjectQueue('email') private emailQueue: Queue,
   ) {
     super({
@@ -26,8 +27,8 @@ export class LocalStrategy extends PassportStrategy(Strategy) {
   async validate(account: string, password: string) {
     // define se é email ou nome e faz login
     const user = await (EmailUtils.validateEmail(account)
-      ? this.authRepository.getUserByEmail(account)
-      : this.authRepository.getUserByName(account));
+      ? this.txHost.tx.user.findUnique({ where: { email: account }})
+      : this.txHost.tx.user.findUnique({ where: { name: account }}));
     if (!user) {
       throw new UnauthorizedException('Usuario e/ou senha incorreto(s)');
     }

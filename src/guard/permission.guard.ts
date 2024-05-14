@@ -1,8 +1,8 @@
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PERMISSIONS_KEY } from '../decorators/permission.decorator';
-import { UserEntity } from '../Entities/User';
-import { Permissions } from '../Entities/Permissions';
+import { Permissions } from '../types/permissions';
+import { User } from '@prisma/client';
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
@@ -17,11 +17,9 @@ export class PermissionsGuard implements CanActivate {
       return true;
     }
     const request = context.switchToHttp().getRequest();
-    const user = request.user as UserEntity;
+    const user = request.user as User;
     return requiredRoles.some(
-      (permission) =>
-        user.permissions?.includes(permission) ||
-        user.permissions?.includes(Permissions.ALL),
+      (permission) => user.permissions?.includes(permission)
     );
   }
 }

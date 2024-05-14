@@ -1,18 +1,45 @@
 import { Module } from '@nestjs/common';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import { APP_GUARD } from '@nestjs/core';
 import { EmailModule } from './modules/email/email.module';
 import { AuthModule } from './api/auth/auth.module';
-
+import { PrismaModule } from './modules/prisma/prisma.module';
+import { ClsModule } from 'nestjs-cls';
+import { ClsPluginTransactional } from '@nestjs-cls/transactional';
+import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
+import { PrismaService } from './modules/prisma/prisma.service';
+import { BullModule } from '@nestjs/bull';
+import { CacheModule as CM } from '@nestjs/cache-manager';
+import * as redisStore from 'cache-manager-redis-store';
+import { env } from './constants/env';
 @Module({
   imports: [
     AuthModule,
     EmailModule,
-    ThrottlerModule.forRoot({
-      ttl: 60,
-      limit: 20,
+    PrismaModule,
+    BullModule.forRoot({
+      redis: {
+        username: env.REDIS_USER,
+        password: env.REDIS_PASSWORD,
+        host: env.REDIS_HOST,
+        port: parseInt(env.REDIS_PORT),
+      },
     }),
+    CM.register({
+      store: redisStore,
+      url: env.REDIS_URL,
+      ttl: 5 * 60,
+      isGlobal: true
+    }),
+    ClsModule.forRoot({
+      plugins: [
+        new ClsPluginTransactional({
+          imports: [PrismaModule],
+          adapter: new TransactionalAdapterPrisma({
+            prismaInjectionToken: PrismaService,
+          }),
+        }),
+      ],
+      global: true,
+    })
   ],
-  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}

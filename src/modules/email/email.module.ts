@@ -1,25 +1,35 @@
 import { Module } from '@nestjs/common';
 import { EmailService } from './email.service';
 import { MailerModule } from '@nestjs-modules/mailer';
-import { EmailController } from './email.controller';
+import { env } from 'src/constants/env';
+import { join } from 'path';
+import { EjsAdapter } from '@nestjs-modules/mailer/dist/adapters/ejs.adapter';
 @Module({
-  controllers: [EmailController],
   providers: [EmailService],
   imports: [
-    /*MailerModule.forRootAsync({
+    MailerModule.forRootAsync({
       useFactory: () => ({
         transport: {
-          SES: new AWS.SES({
-            region: 'us-east-1',
-            accessKeyId: 'AKIA4GHCIAFVG5YMHQWT',
-            secretAccessKey: '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'
-          }),
+          host: env.EMAIL_HOST,
+          port: parseInt(env.EMAIL_PORT || '465'),
+          secure: env.EMAIL_SECURE === 'true',
+          auth: {
+            user: env.EMAIL_USER,
+            pass: env.EMAIL_PASSWORD,
+          },
         },
         defaults: {
-          from: '"MAYRON" mayronfernades01@gmail.com',
-        }
+          from: 'Reserva99 <mayron.g.fernandes@gmail.com>',
+        },
+        template: {
+          dir: join(process.cwd(), 'dist/templates/email'),
+          adapter: new EjsAdapter(),
+          options: {
+            strict: false,
+          },
+        },
       }),
-    }),*/
+    }),
   ],
   exports: [EmailService],
 })
