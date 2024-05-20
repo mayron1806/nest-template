@@ -16,7 +16,7 @@ import { CreateUserRequest } from './dto/request/create-user-request';
 import { ResetPasswordRequest } from './dto/request/reset-password-request';
 import { LoginResponse } from './dto/response/login.response';
 import { RefreshTokenContent } from './types/refresh-token-content';
-import moment from 'moment';
+import * as moment from 'moment';
 import { RefreshTokenRequest } from './dto/request/refresh-token-request';
 import { TransactionHost } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
@@ -43,10 +43,19 @@ export class AuthService {
     );
     return refreshToken;
   }
-  public async activeAccount(key: string) {
-    const userId = await this.cacheManager.get<number>(key);
+  public async activeAccount(token: string) {
+    let payload: EmailToken = {} as EmailToken;
+    try {
+      payload = this.jwt.verify<EmailToken>(token);
+    } catch (error) {
+      throw new BadRequestException('Token invalido.');
+    }
+    if (!payload || payload.type !== 'active-account' || !payload.id) {
+      throw new BadRequestException('Token invalido.');
+    }
+    const userId = payload.id;
     if (!userId) {
-      throw new UnauthorizedException(
+      throw new BadRequestException(
         'O token já foi expirado. Tente realizar login para gerar um novo token e ativar a sua conta.',
       );
     }
@@ -56,18 +65,10 @@ export class AuthService {
         'O token é invalido. Tente realizar login para gerar um novo token e ativar a sua conta.',
       );
     }
-    user.status = 'Active';
-    await this.txHost.tx.user.update({
-      where: { id: user.id },
-      data: user,
-    });
-    return { result: true };
+    await this.txHost.tx.user.update({ where: { id: userId }, data: { status: 'Active' } });
+    return true;
   }
   public async createAccount(createUserDto: CreateUserRequest) {
-    // se não tem email
-    if (!!!createUserDto.email) {
-      throw new BadRequestException('Você precisa informar o campo email');
-    }
     // verifica se email ou nome estão em uso
     const existsName = await this.txHost.tx.user.findFirst({ where: { name: createUserDto.name }});
     if (existsName) {

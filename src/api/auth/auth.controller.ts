@@ -26,6 +26,8 @@ export class AuthController {
 
   @Post('active/:id')
   async activeAccount(@Param('id') id: string) {
+    console.log(id);
+    
     return this.authService.activeAccount(id);
   }
   @Post('refresh-token')

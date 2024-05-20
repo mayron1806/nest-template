@@ -7,9 +7,10 @@ import { ClsPluginTransactional } from '@nestjs-cls/transactional';
 import { TransactionalAdapterPrisma } from '@nestjs-cls/transactional-adapter-prisma';
 import { PrismaService } from './modules/prisma/prisma.service';
 import { BullModule } from '@nestjs/bull';
-import { CacheModule as CM } from '@nestjs/cache-manager';
-import * as redisStore from 'cache-manager-redis-store';
+import { CacheModule } from '@nestjs/cache-manager';
+import { redisStore } from 'cache-manager-redis-yet';
 import { env } from './constants/env';
+import type { RedisClientOptions } from 'redis';
 @Module({
   imports: [
     AuthModule,
@@ -23,10 +24,19 @@ import { env } from './constants/env';
         port: parseInt(env.REDIS_PORT),
       },
     }),
-    CM.register({
-      store: redisStore,
-      url: env.REDIS_URL,
-      ttl: 5 * 60,
+    // CacheModule.register({
+    //   store: redisStore,
+    //   url: env.REDIS_URL,
+    //   ttl: 5 * 60,
+    //   isGlobal: true
+    // }),
+    CacheModule.registerAsync({
+      useFactory: async () => ({
+        store: await redisStore({
+          ttl: 60 * 5,
+          url: env.REDIS_URL,
+        })
+      }),
       isGlobal: true
     }),
     ClsModule.forRoot({
